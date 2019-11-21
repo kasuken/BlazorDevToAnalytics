@@ -1,0 +1,37 @@
+﻿@inject HttpClient Http
+
+<h3>HomeAnalytics</h3>
+
+@if (publishedarticles == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Comments Counts</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var article in publishedarticles)
+            {
+                <tr>
+                    <td>@article.Title</td>
+                    <td>@article.CommentsCount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PublishedArticle> publishedarticles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        publishedarticles = await Http.GetJsonAsync<List<PublishedArticle>>("/api/DevToAnalytics");
+    }
+}
