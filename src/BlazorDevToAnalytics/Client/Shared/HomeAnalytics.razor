@@ -1,26 +1,52 @@
-﻿@inject HttpClient Http
+﻿@using ChartJs.Blazor.ChartJS.BarChart
+@using ChartJs.Blazor.ChartJS.BarChart.Axes
+@using ChartJs.Blazor.ChartJS.Common.Axes
+@using ChartJs.Blazor.ChartJS.Common.Axes.Ticks
+@using ChartJs.Blazor.ChartJS.Common.Properties
+@using ChartJs.Blazor.ChartJS.Common.Wrappers
+@using ChartJs.Blazor.Charts
+@using ChartJs.Blazor.Util
+
+@inject HttpClient Http
 
 <h3>HomeAnalytics</h3>
 
-@if (publishedarticles == null)
+@if (statsArticles == null)
 {
     <p><em>Loading...</em></p>
 }
 else
 {
+    <div>Total Views: @statsArticles.TotalViews</div>
+    <div>Total Articles: @statsArticles.TotalArticles</div>
+    <div>Total Comments: @statsArticles.TotalComments</div>
+    <div>Total Reactions: @statsArticles.TotalReactions</div>
+}
+
+@if (userarticles == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <ChartJsBarChart @ref="_barChart"
+                     Config="@_barChartConfig"
+                     Width="600"
+                     Height="300" />
+
     <table class="table">
         <thead>
             <tr>
                 <th>Title</th>
-                <th>Comments Counts</th>
+                <th>View Counts</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var article in publishedarticles)
+            @foreach (var article in userarticles)
             {
                 <tr>
                     <td>@article.Title</td>
-                    <td>@article.CommentsCount</td>
+                    <td>@article.PageViewsCount</td>
                 </tr>
             }
         </tbody>
@@ -28,10 +54,60 @@ else
 }
 
 @code {
-    private List<PublishedArticle> publishedarticles;
+    private List<UserArticle> userarticles;
+    private StatsArticles statsArticles;
+
+    private BarConfig _barChartConfig;
+    private ChartJsBarChart _barChart;
+    private BarDataset<DoubleWrapper> _barDataSet;
 
     protected override async Task OnInitializedAsync()
     {
-        publishedarticles = await Http.GetJsonAsync<List<PublishedArticle>>("/api/DevToAnalytics");
+        userarticles = await Http.GetJsonAsync<List<UserArticle>>("/api/DevToAnalytics/UserArticlesOrderByViewCounts");
+
+        statsArticles = await Http.GetJsonAsync<StatsArticles>("/api/DevToAnalytics/StatsArticles");
+
+        _barChartConfig = new BarConfig
+        {
+            Options = new BarOptions
+            {
+                Title = new OptionsTitle
+                {
+                    Display = true,
+                    Text = "Posts by Views"
+                },
+                Scales = new BarScales
+                {
+                    XAxes = new List<CartesianAxis> {
+                        new BarCategoryAxis {
+                            BarPercentage = 1
+                        }
+                    },
+                    YAxes = new List<CartesianAxis> {
+                        new BarLinearCartesianAxis {
+                            Ticks = new LinearCartesianTicks {
+                                BeginAtZero = true
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        _barChartConfig.Data.Labels.AddRange(userarticles.Select(p => p.Title).ToList().Take(5));
+
+        _barDataSet = new BarDataset<DoubleWrapper>
+        {
+            BackgroundColor = "#0094FF",
+            BorderWidth = 0,
+            HoverBackgroundColor = ColorUtil.RandomColorString(),
+            HoverBorderColor = ColorUtil.RandomColorString(),
+            HoverBorderWidth = 1,
+            BorderColor = "#ffffff"
+
+        };
+
+        _barDataSet.AddRange(userarticles.Select(p => p.PageViewsCount).Take(5).Wrap());
+        _barChartConfig.Data.Datasets.Add(_barDataSet);
     }
 }

@@ -10,21 +10,47 @@ using Newtonsoft.Json;
 namespace BlazorDevToAnalytics.Server.Controllers
 {
     [Route("api/[controller]")]
-    public class DevToAnalyticsController : Controller
+    public class DevToAnalyticsController : ControllerBase
     {
         [HttpGet]
-        public async Task<List<PublishedArticle>> Get()
+        [Route("UserArticlesOrderByViewCounts")]
+        public async Task<List<UserArticle>> UserArticlesOrderByViewCounts()
         {
-            var articles = new List<PublishedArticle>();
+            var client = new HttpClient();
+
+            client.DefaultRequestHeaders.Add("api-key", "");
+
+            var response = await client.GetStringAsync("https://dev.to/api/articles/me?page=1");
+            var articles = JsonConvert.DeserializeObject<List<UserArticle>>(response);
+
+            articles = articles.OrderByDescending(p => p.PageViewsCount).ToList();
+
+            return articles;
+        }
+
+        [HttpGet]
+        [Route("StatsArticles")]
+        public async Task<StatsArticles> StatsArticles()
+        {
+            var statsArticles = new StatsArticles();
 
             var client = new HttpClient();
 
             client.DefaultRequestHeaders.Add("api-key", "");
 
             var response = await client.GetStringAsync("https://dev.to/api/articles/me?page=1");
-            articles = JsonConvert.DeserializeObject<List<PublishedArticle>>(response);
+            var articles = JsonConvert.DeserializeObject<List<UserArticle>>(response);
 
-            return articles;
+            foreach (var item in articles)
+            {
+                statsArticles.TotalViews += item.PageViewsCount;
+                statsArticles.TotalComments += item.CommentsCount;
+                statsArticles.TotalReactions += item.PositiveReactionsCount;
+            }
+
+            statsArticles.TotalArticles = articles.Count;
+
+            return statsArticles;
         }
     }
 }
