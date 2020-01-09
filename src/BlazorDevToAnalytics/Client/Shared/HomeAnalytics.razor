@@ -1,15 +1,5 @@
-﻿@using ChartJs.Blazor.ChartJS.BarChart
-@using ChartJs.Blazor.ChartJS.BarChart.Axes
-@using ChartJs.Blazor.ChartJS.Common.Axes
-@using ChartJs.Blazor.ChartJS.Common.Axes.Ticks
-@using ChartJs.Blazor.ChartJS.Common.Properties
-@using ChartJs.Blazor.ChartJS.Common.Wrappers
-@using ChartJs.Blazor.Charts
-@using ChartJs.Blazor.Util
-
+﻿@inject ILocalStorageService localStorage
 @inject HttpClient Http
-
-<h3>HomeAnalytics</h3>
 
 @if (statsArticles == null)
 {
@@ -17,10 +7,76 @@
 }
 else
 {
-    <div>Total Views: @statsArticles.TotalViews</div>
-    <div>Total Articles: @statsArticles.TotalArticles</div>
-    <div>Total Comments: @statsArticles.TotalComments</div>
-    <div>Total Reactions: @statsArticles.TotalReactions</div>
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Views</h5>
+                    <p class="card-text">@statsArticles.TotalViews</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Articles</h5>
+                    <p class="card-text">@statsArticles.TotalArticles</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Comments</h5>
+                    <p class="card-text">@statsArticles.TotalComments</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Reactions</h5>
+                    <p class="card-text">@statsArticles.TotalReactions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (percentagesStats.AllViewsVsTopArticle == 0)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <br />
+
+    <div class="row">
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Percentage of all views of your most viewed article</h7>
+                    <p class="card-text">@percentagesStats.AllViewsVsTopArticle%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Percentage of all reactions of your article with most reactions</h7>
+                    <p class="card-text">@percentagesStats.AllReactionsVsTopArticle%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Percentage of all comments of your article with most comments</h7>
+                    <p class="card-text">@percentagesStats.AllCommentsVsTopArticle%</p>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @if (userarticles == null)
@@ -29,10 +85,14 @@ else
 }
 else
 {
+    <hr />
+
     <ChartJsBarChart @ref="_barChart"
                      Config="@_barChartConfig"
                      Width="600"
                      Height="300" />
+
+    <hr />
 
     <table class="table">
         <thead>
@@ -56,6 +116,7 @@ else
 @code {
     private List<UserArticle> userarticles;
     private StatsArticles statsArticles;
+    private PercentagesStats percentagesStats = new PercentagesStats();
 
     private BarConfig _barChartConfig;
     private ChartJsBarChart _barChart;
@@ -63,10 +124,29 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        userarticles = await Http.GetJsonAsync<List<UserArticle>>("/api/DevToAnalytics/UserArticlesOrderByViewCounts");
+        var apikey = await localStorage.GetItemAsync<string>("api-key");
 
-        statsArticles = await Http.GetJsonAsync<StatsArticles>("/api/DevToAnalytics/StatsArticles");
+        userarticles = await Http.GetJsonAsync<List<UserArticle>>($"/api/DevToAnalytics/UserArticlesOrderByViewCounts?key={apikey}");
+        statsArticles = await Http.GetJsonAsync<StatsArticles>($"/api/DevToAnalytics/StatsArticles?key={apikey}");
 
+        CalculatePercentagesStats();
+
+        CreateChartTopViews();
+    }
+
+    private void CalculatePercentagesStats()
+    {
+        percentagesStats.AllViewsVsTopArticle = Convert.ToInt32((userarticles[0].PageViewsCount / statsArticles.TotalViews) * 100);
+
+        percentagesStats.AllReactionsVsTopArticle = Convert.ToInt32((userarticles.OrderByDescending(c => c.PositiveReactionsCount).FirstOrDefault().PositiveReactionsCount / statsArticles.TotalReactions) * 100);
+
+        percentagesStats.AllCommentsVsTopArticle = Convert.ToInt32((userarticles.OrderByDescending(c => c.CommentsCount).FirstOrDefault().CommentsCount / statsArticles.TotalComments) * 100);
+
+
+    }
+
+    private void CreateChartTopViews()
+    {
         _barChartConfig = new BarConfig
         {
             Options = new BarOptions

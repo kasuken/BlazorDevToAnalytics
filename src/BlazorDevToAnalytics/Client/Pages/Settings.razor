@@ -1,0 +1,28 @@
+﻿@page "/settings"
+
+@inject ILocalStorageService localStorage
+@inject NavigationManager NavigationManager
+
+<h1>
+    Settings
+</h1>
+
+<input type="text" @bind-value="ApiKey" />
+
+<input type="button" @onclick="SaveApiKey" value="Save" />
+
+@code {
+
+    private string ApiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApiKey = await localStorage.GetItemAsync<string>("api-key");
+    }
+
+    private async Task SaveApiKey()
+    {
+        await localStorage.SetItemAsync("api-key", ApiKey);
+        NavigationManager.NavigateTo("/");
+    }
+}

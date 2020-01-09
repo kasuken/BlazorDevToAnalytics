@@ -1,0 +1,90 @@
+﻿@inject HttpClient Http
+@inject ILocalStorageService localStorage
+
+@if (mostViewed.Views == 0)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Your most viewed tag is</h7>
+                    <p class="card-text">@mostViewed.Tag with @mostViewed.Views views</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Your tag with the most reactions is</h7>
+                    <p class="card-text">@mostReaction.Tag with @mostReaction.Reactions reactions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h7 class="card-title">Your tag with most comments is</h7>
+                    <p class="card-text">@mostCommented.Tag with @mostCommented.Comments comments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (userarticles == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Tags</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var article in userarticles)
+            {
+                <tr>
+                    <td>@article.Title</td>
+                    <td>
+                        @foreach (var item in @article.TagList)
+                        {
+                            <span>@item, </span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<UserArticle> userarticles;
+    private MostViewedTag mostViewed = new MostViewedTag();
+    private MostReactionsTag mostReaction = new MostReactionsTag();
+    private MostCommentedTag mostCommented = new MostCommentedTag();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var apikey = await localStorage.GetItemAsync<string>("api-key");
+
+        userarticles = await Http.GetJsonAsync<List<UserArticle>>($"/api/DevToAnalytics/UserArticlesOrderByViewCounts?key={apikey}");
+        userarticles = userarticles.OrderByDescending(t => t.TagList.Length).ToList();
+
+        await CalculateTagsStats(apikey);
+    }
+
+    private async Task CalculateTagsStats(string apikey)
+    {
+        mostViewed = await Http.GetJsonAsync<MostViewedTag>($"/api/DevToAnalytics/MostViewedTag?key={apikey}");
+        mostReaction = await Http.GetJsonAsync<MostReactionsTag>($"/api/DevToAnalytics/MostReactionsTag?key={apikey}");
+        mostCommented = await Http.GetJsonAsync<MostCommentedTag>($"/api/DevToAnalytics/MostCommentedTag?key={apikey}");
+    }
+}

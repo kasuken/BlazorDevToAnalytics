@@ -1,7 +1,22 @@
 ﻿@page "/"
 
+@inject ILocalStorageService localStorage
+@inject NavigationManager NavigationManager
+
 <h1>
-    Dev.To Analytics
+    Views statistics
 </h1>
 
 <HomeAnalytics />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var apikey = await localStorage.GetItemAsync<string>("api-key");
+
+        if (string.IsNullOrEmpty(apikey))
+        {
+            NavigationManager.NavigateTo("settings");
+        }
+    }
+}
